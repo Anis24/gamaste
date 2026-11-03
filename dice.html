@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D6 Dice Roller</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --card: #ffffff;
+      --text: #1f2933;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --border: #e5e7eb;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111418;
+        --card: #1a1f25;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --accent: #3b82f6;
+        --accent-hover: #60a5fa;
+        --border: #2a313a;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 520px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px 24px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+    }
+
+    h1 {
+      margin: 0 0 20px;
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .table {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      background: #2f5d4a;
+    }
+
+    .table canvas { display: block; touch-action: none; }
+    .table canvas.grab { cursor: grab; }
+    .table canvas.grabbing { cursor: grabbing; }
+
+    .total {
+      font-size: 3rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-bottom: 24px;
+      min-height: 1.2em;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover { background: var(--accent-hover); }
+    button:disabled { opacity: 0.7; cursor: default; }
+
+    .history {
+      margin-top: 20px;
+      color: var(--muted);
+      font-size: 0.875rem;
+      min-height: 1.2em;
+    }
+
+    .hint {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main class="card">
+    <h1>2D6 Dice Roller</h1>
+
+    <div class="table" id="table"></div>
+
+    <div class="total" id="total">–</div>
+    <div class="label" id="label">Press roll to start</div>
+
+    <button id="roll">Roll</button>
+
+    <div class="history" id="history"></div>
+    <div class="hint">Tip: press Space or Enter to roll, or drag a die — move gently to reposition, flick to throw</div>
+  </main>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import * as CANNON from 'cannon-es';
+
+    const tableEl = document.getElementById('table');
+    const totalEl = document.getElementById('total');
+    const labelEl = document.getElementById('label');
+    const historyEl = document.getElementById('history');
+    const rollBtn = document.getElementById('roll');
+    const history = [];
+
+    // Play area (half extents); invisible walls keep the dice in view
+    const HALF_W = 3.2;
+    const HALF_D = 2.1;
+    const DIE_SIZE = 1;
+
+    // ---------- Rendering ----------
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    tableEl.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(38, 16 / 10, 0.1, 100);
+    camera.position.set(0, 11, 4);
+    camera.lookAt(0, 0, 0);
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x334433, 1.4));
+    const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+    sun.position.set(3, 10, 4);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6 });
+    sun.shadow.radius = 4;
+    scene.add(sun);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(30, 30),
+      new THREE.MeshStandardMaterial({ color: 0x2f5d4a, roughness: 0.95 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Which of the 9 grid cells show a pip for each face (0–8, row-major)
+    const PIPS = {
+      1: [4],
+      2: [0, 8],
+      3: [0, 4, 8],
+      4: [0, 2, 6, 8],
+      5: [0, 2, 4, 6, 8],
+      6: [0, 2, 3, 5, 6, 8]
+    };
+
+    function faceTexture(value) {
+      const size = 256;
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#d9dce1';
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#fafafa';
+      ctx.beginPath();
+      ctx.roundRect(8, 8, size - 16, size - 16, 36);
+      ctx.fill();
+      ctx.fillStyle = value === 1 ? '#c62828' : '#1f2933';
+      for (const cell of PIPS[value]) {
+        const x = (cell % 3 + 1) * size / 4;
+        const y = (Math.floor(cell / 3) + 1) * size / 4;
+        ctx.beginPath();
+        ctx.arc(x, y, value === 1 ? 30 : 22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      return tex;
+    }
+
+    // BoxGeometry face order: +x, -x, +y, -y, +z, -z (opposite faces sum to 7)
+    const FACE_VALUES = [1, 6, 2, 5, 3, 4];
+    const FACE_NORMALS = [
+      new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+      new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0),
+      new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)
+    ];
+    const dieMaterials = FACE_VALUES.map(v =>
+      new THREE.MeshStandardMaterial({ map: faceTexture(v), roughness: 0.35 })
+    );
+    const dieGeometry = new THREE.BoxGeometry(DIE_SIZE, DIE_SIZE, DIE_SIZE);
+
+    // ---------- Physics ----------
+    const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -30, 0) });
+    world.allowSleep = true;
+
+    const tableMat = new CANNON.Material('table');
+    const diceMat = new CANNON.Material('dice');
+    world.addContactMaterial(new CANNON.ContactMaterial(tableMat, diceMat, { friction: 0.3, restitution: 0.45 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(diceMat, diceMat, { friction: 0.2, restitution: 0.4 }));
+
+    function addPlane(position, euler) {
+      const body = new CANNON.Body({ mass: 0, material: tableMat, shape: new CANNON.Plane() });
+      body.position.set(...position);
+      body.quaternion.setFromEuler(...euler);
+      world.addBody(body);
+    }
+    addPlane([0, 0, 0], [-Math.PI / 2, 0, 0]);        // floor
+    addPlane([-HALF_W, 0, 0], [0, Math.PI / 2, 0]);   // left wall
+    addPlane([HALF_W, 0, 0], [0, -Math.PI / 2, 0]);   // right wall
+    addPlane([0, 0, -HALF_D], [0, 0, 0]);             // back wall
+    addPlane([0, 0, HALF_D], [0, Math.PI, 0]);        // front wall
+
+    const dice = [-1, 1].map(x => {
+      const mesh = new THREE.Mesh(dieGeometry, dieMaterials);
+      mesh.castShadow = true;
+      scene.add(mesh);
+
+      const half = DIE_SIZE / 2;
+      const body = new CANNON.Body({
+        mass: 1,
+        material: diceMat,
+        shape: new CANNON.Box(new CANNON.Vec3(half, half, half)),
+        sleepSpeedLimit: 0.15,
+        sleepTimeLimit: 0.3,
+        linearDamping: 0.1,
+        angularDamping: 0.1
+      });
+      body.position.set(x, half, 0);
+      world.addBody(body);
+      return { mesh, body };
+    });
+
+    function topFace(die) {
+      const q = die.mesh.quaternion;
+      let best = 0, bestY = -Infinity;
+      FACE_NORMALS.forEach((n, i) => {
+        const y = n.clone().applyQuaternion(q).y;
+        if (y > bestY) { bestY = y; best = i; }
+      });
+      return FACE_VALUES[best];
+    }
+
+    // ---------- Rolling ----------
+    // 'roll' records a new result; 'place' only refreshes the display once the die lands
+    let pending = null;
+    let rollStart = 0;
+    let dragging = null;
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function startSettling(mode) {
+      pending = mode;
+      rollStart = performance.now();
+      rollBtn.disabled = true;
+      if (mode === 'roll') labelEl.textContent = 'Rolling…';
+    }
+
+    function roll() {
+      if (pending || dragging) return;
+      startSettling('roll');
+
+      for (const { body } of dice) {
+        body.wakeUp();
+        // Leap up, drifting a little back toward the middle of the table
+        body.velocity.set(
+          -body.position.x * 0.8 + rand(-1.5, 1.5),
+          rand(9, 12),
+          -body.position.z * 0.8 + rand(-1.5, 1.5)
+        );
+        body.angularVelocity.set(rand(-20, 20), rand(-20, 20), rand(-20, 20));
+      }
+    }
+
+    function finishRoll() {
+      const mode = pending;
+      pending = null;
+      rollBtn.disabled = false;
+
+      // A gentle reposition before the first roll has no result to show yet
+      if (mode === 'place' && history.length === 0) return;
+
+      const [a, b] = dice.map(topFace);
+      const total = a + b;
+      totalEl.textContent = total;
+      labelEl.textContent = a === b ? `${a} + ${b} — doubles!` : `${a} + ${b}`;
+
+      if (mode === 'roll') {
+        history.unshift(total);
+        if (history.length > 10) history.pop();
+        historyEl.textContent = 'Recent: ' + history.join(', ');
+      }
+    }
+
+    function isSettled() {
+      return dice.every(({ body }) =>
+        body.sleepState === CANNON.Body.SLEEPING ||
+        (body.velocity.length() < 0.05 && body.angularVelocity.length() < 0.05)
+      );
+    }
+
+    rollBtn.addEventListener('click', roll);
+    document.addEventListener('keydown', e => {
+      if ((e.code === 'Space' || e.code === 'Enter') && e.target === document.body) {
+        e.preventDefault();
+        roll();
+      }
+    });
+
+    // ---------- Drag & throw ----------
+    const LIFT_Y = DIE_SIZE / 2 + 0.6;        // held dice hover this high
+    const THROW_SPEED = 4;                     // units/s; slower releases just set the die down
+    const MAX_THROW_SPEED = 18;
+    const SAMPLE_WINDOW = 100;                 // ms of pointer history used for release velocity
+
+    const canvas = renderer.domElement;
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const liftPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -LIFT_Y);
+    const hit = new THREE.Vector3();
+
+    function setPointer(e) {
+      const rect = canvas.getBoundingClientRect();
+      pointer.set(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      raycaster.setFromCamera(pointer, camera);
+    }
+
+    function dieUnderPointer() {
+      const hits = raycaster.intersectObjects(dice.map(d => d.mesh));
+      return hits.length ? dice.find(d => d.mesh === hits[0].object) : null;
+    }
+
+    function setKinematic(body, kinematic) {
+      body.type = kinematic ? CANNON.Body.KINEMATIC : CANNON.Body.DYNAMIC;
+      body.mass = kinematic ? 0 : 1;
+      body.updateMassProperties();
+      body.updateSolveMassProperties();
+      body.velocity.setZero();
+      body.angularVelocity.setZero();
+      body.wakeUp();
+    }
+
+    function clampToTable(x, z) {
+      const m = DIE_SIZE / 2 + 0.05;
+      return [
+        Math.max(-HALF_W + m, Math.min(HALF_W - m, x)),
+        Math.max(-HALF_D + m, Math.min(HALF_D - m, z))
+      ];
+    }
+
+    canvas.addEventListener('pointerdown', e => {
+      if (pending || dragging) return;
+      setPointer(e);
+      const die = dieUnderPointer();
+      if (!die || !raycaster.ray.intersectPlane(liftPlane, hit)) return;
+
+      canvas.setPointerCapture(e.pointerId);
+      canvas.className = 'grabbing';
+      rollBtn.disabled = true;
+      setKinematic(die.body, true);
+
+      dragging = {
+        die,
+        offsetX: die.body.position.x - hit.x,
+        offsetZ: die.body.position.z - hit.z,
+        samples: [{ t: performance.now(), x: die.body.position.x, z: die.body.position.z }]
+      };
+      die.body.position.y = LIFT_Y;
+    });
+
+    canvas.addEventListener('pointermove', e => {
+      setPointer(e);
+      if (!dragging) {
+        canvas.className = !pending && dieUnderPointer() ? 'grab' : '';
+        return;
+      }
+      if (!raycaster.ray.intersectPlane(liftPlane, hit)) return;
+
+      const [x, z] = clampToTable(hit.x + dragging.offsetX, hit.z + dragging.offsetZ);
+      dragging.die.body.position.set(x, LIFT_Y, z);
+
+      const now = performance.now();
+      dragging.samples.push({ t: now, x, z });
+      while (dragging.samples.length > 2 && now - dragging.samples[0].t > SAMPLE_WINDOW) {
+        dragging.samples.shift();
+      }
+    });
+
+    function release() {
+      if (!dragging) return;
+      const { die, samples } = dragging;
+      dragging = null;
+      canvas.className = '';
+
+      // Velocity from recent pointer movement; a pause before letting go counts as gentle
+      const now = performance.now();
+      const first = samples[0];
+      const last = samples[samples.length - 1];
+      let vx = 0, vz = 0;
+      if (now - last.t < SAMPLE_WINDOW / 2 && last.t > first.t) {
+        const dt = (last.t - first.t) / 1000;
+        vx = (last.x - first.x) / dt;
+        vz = (last.z - first.z) / dt;
+      }
+      const speed = Math.hypot(vx, vz);
+
+      setKinematic(die.body, false);
+
+      if (speed < THROW_SPEED) {
+        // Gentle: drop straight down, no spin, so the face stays the same
+        startSettling('place');
+        return;
+      }
+
+      const scale = Math.min(speed, MAX_THROW_SPEED) / speed;
+      const spin = Math.min(speed * 1.5, 25);
+      die.body.velocity.set(vx * scale, Math.min(3 + speed * 0.3, 9), vz * scale);
+      die.body.angularVelocity.set(rand(-spin, spin), rand(-spin, spin), rand(-spin, spin));
+      for (const other of dice) other.body.wakeUp();
+      startSettling('roll');
+    }
+
+    canvas.addEventListener('pointerup', release);
+    canvas.addEventListener('pointercancel', release);
+
+    // ---------- Loop ----------
+    function resize() {
+      const { clientWidth: w, clientHeight: h } = tableEl;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    new ResizeObserver(resize).observe(tableEl);
+    resize();
+
+    let last = performance.now();
+    function animate(now) {
+      const dt = Math.min((now - last) / 1000, 0.1);
+      last = now;
+      world.step(1 / 60, dt, 5);
+
+      for (const { mesh, body } of dice) {
+        mesh.position.copy(body.position);
+        mesh.quaternion.copy(body.quaternion);
+      }
+
+      if (pending) {
+        const elapsed = now - rollStart;
+        if ((elapsed > 400 && isSettled()) || elapsed > 8000) finishRoll();
+      }
+
+      renderer.render(scene, camera);
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
