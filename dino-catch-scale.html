@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+</head>
+<body style="margin:0">
+<title>Dino Catch Scale Test</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: pitch + game flow on the left, a live phone mock-up pinned on the right; stacks with the phone after the intro on narrow screens */
+:root {
+  --bg: #e9eee6;
+  --surface: #f6f8f3;
+  --ink: #18261c;
+  --muted: #586a5c;
+  --line: #c9d3c3;
+  --fern: #2b5a37;
+  --amber: #e9a81c;
+  --amber-soft: #f7e3ae;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Figtree", "Helvetica Neue", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1511; --surface: #16201a; --ink: #e3eadf; --muted: #93a396;
+    --line: #2b382f; --fern: #86c193; --amber: #f2b63c; --amber-soft: #3a3016;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1511; --surface: #16201a; --ink: #e3eadf; --muted: #93a396;
+  --line: #2b382f; --fern: #86c193; --amber: #f2b63c; --amber-soft: #3a3016;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+
+.wrap {
+  max-width: 1120px; margin: 0 auto; padding-block: 48px 64px;
+  display: grid; gap: 28px 64px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "head device" "steps device" "env device" "dbg device";
+  align-items: start;
+}
+.head { grid-area: head; }
+.steps-box { grid-area: steps; }
+.env { grid-area: env; }
+.device { grid-area: device; position: sticky; top: calc(24px + env(safe-area-inset-top, 0px)); display: grid; justify-items: center; gap: 14px; }
+@media (max-width: 880px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "device" "dbg" "steps" "env"; padding-block: 28px 48px; }
+  .device { position: static; }
+}
+
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
+h1 { font: 800 clamp(40px, 6vw, 64px)/0.95 var(--display); letter-spacing: -0.03em; margin: 0 0 18px; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--fern); }
+.lede { font-size: 17px; max-width: 58ch; margin: 0; color: var(--ink); }
+.lede + .lede { margin-top: 10px; color: var(--muted); font-size: 15px; }
+h2 { font: 700 13px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
+
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.steps button {
+  width: 100%; text-align: left; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start;
+  background: transparent; border: 1px solid transparent; border-radius: 12px; padding: 10px 12px;
+  transition: background .25s, border-color .25s;
+}
+.steps button:hover { background: var(--surface); border-color: var(--line); }
+.steps .n {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  font: 600 13px var(--mono); border: 1.5px solid var(--line); color: var(--muted); transition: all .25s;
+}
+.steps b { display: block; font: 700 16px/1.25 var(--display); }
+.steps small { display: block; color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+.steps button.on { background: var(--amber-soft); border-color: var(--amber); }
+.steps button.on .n { background: var(--amber); border-color: var(--amber); color: #1d1503; }
+
+.env { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: grid; gap: 14px; }
+.env p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 60ch; }
+.env h2 { margin: 0; }
+.field { display: grid; gap: 6px; }
+.field > span { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button {
+  border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 6px 14px; font-weight: 600; font-size: 14px;
+}
+.seg button[aria-checked="true"] { background: var(--fern); border-color: var(--fern); color: var(--bg); }
+.spawn-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; border-top: 1px dashed var(--line); padding-top: 14px; }
+.spawn-line div { font-size: 14px; }
+.spawn-line strong { font-family: var(--display); font-size: 16px; }
+.ghost { border: 1px solid var(--line); background: transparent; border-radius: 10px; padding: 7px 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.ghost:hover { color: var(--ink); border-color: var(--muted); }
+.device-cap { font: 500 12px var(--mono); color: var(--muted); text-align: center; letter-spacing: .02em; }
+
+/* ---------- Phone (fixed device look, independent of page theme) ---------- */
+.phone {
+  width: min(340px, 100%); aspect-ratio: 340 / 724; border-radius: 52px; padding: 11px;
+  background: linear-gradient(145deg, #3a3d3b, #121413 40%, #262927);
+  box-shadow: 0 0 0 1.5px #545856 inset, 0 30px 60px -20px rgba(10, 25, 15, .55), 0 12px 24px -12px rgba(0,0,0,.4);
+}
+.screen { position: relative; width: 100%; height: 100%; border-radius: 42px; overflow: hidden; background: #000; isolation: isolate; font-family: var(--body); color: #fff; }
+.island { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 92px; height: 27px; background: #000; border-radius: 20px; z-index: 60; }
+.statusbar {
+  position: absolute; inset: 0 0 auto; height: 46px; z-index: 55; display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 30px 0; font: 600 14px var(--body); color: #fff; transition: color .3s; pointer-events: none;
+}
+.screen.light-status .statusbar { color: #17221a; }
+.sb-icons { display: flex; gap: 5px; align-items: center; }
+.bars { display: flex; gap: 1.5px; align-items: flex-end; height: 10px; }
+.bars i { width: 3px; background: currentColor; border-radius: 1px; }
+.batt { width: 22px; height: 11px; border: 1.5px solid currentColor; border-radius: 3.5px; padding: 1px; opacity: .95; }
+.batt i { display: block; height: 100%; width: 72%; background: currentColor; border-radius: 1.5px; }
+
+.scr { position: absolute; inset: 0; }
+.world { position: absolute; inset: -4%; animation: sway 9s ease-in-out infinite; }
+@keyframes sway {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(1.2%, -0.6%) rotate(.35deg); }
+  50% { transform: translate(-0.6%, 0.8%) rotate(-.25deg); }
+  75% { transform: translate(-1.1%, -0.3%) rotate(.2deg); }
+}
+#scene, #fx, #dbg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#fx { pointer-events: none; z-index: 5; }
+.vignette { position: absolute; inset: 0; z-index: 6; pointer-events: none; background: radial-gradient(120% 80% at 50% 45%, transparent 55%, rgba(0,0,0,.35)); }
+
+.dino-wrap { position: absolute; left: 50%; width: 76%; margin-left: -38%; bottom: 17%; z-index: 4; cursor: pointer; -webkit-tap-highlight-color: transparent; background: none; border: 0; padding: 0; }
+.dino-wrap[data-kind="fly"] { width: 70%; margin-left: -35%; bottom: 46%; }
+.dino-wrap[data-kind="tall"] { width: 70%; margin-left: -35%; }
+.dino { display: block; position: relative; z-index: 2; transition: transform .5s cubic-bezier(.3,1.4,.5,1); transform-origin: 50% 70%; }
+.dino svg { width: 100%; display: block; overflow: visible; filter: drop-shadow(0 8px 10px rgba(0,0,0,.35)); transform-origin: 50% 100%; animation: breathe 3.4s ease-in-out infinite; }
+.dino-wrap[data-kind="fly"] .dino svg { animation: hover 2.6s ease-in-out infinite; }
+@keyframes breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.012, 0.985) translateY(1%); } }
+@keyframes hover { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-6%) rotate(1.5deg); } }
+.dino.appear { animation: appear .9s cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes appear { 0% { opacity: 0; transform: scale(.3) translateY(10%); filter: blur(6px) brightness(2); } 60% { opacity: 1; filter: blur(0) brightness(1.3); } 100% { opacity: 1; transform: none; filter: none; } }
+.dino.as-sticker { transform: rotate(-7deg) scale(.82); }
+.dino.as-sticker svg { animation: none; filter: none; }
+.ground-shadow { position: absolute; left: 14%; right: 10%; bottom: -2%; height: 12%; z-index: 1; background: radial-gradient(closest-side, rgba(15, 18, 8, .5), transparent); transition: opacity .3s; }
+.dino-wrap[data-kind="fly"] .ground-shadow { bottom: -95%; left: 30%; right: 30%; opacity: .5; }
+.dino-wrap.caught .ground-shadow { opacity: 0; }
+
+.reticle {
+  position: absolute; inset: -8% -5% -6%; z-index: 3; pointer-events: none; transition: inset .45s cubic-bezier(.5,0,.3,1), opacity .3s;
+  --c: rgba(255,255,255,.9); --l: 22px;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / var(--l) 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) top left / 2px var(--l) no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / var(--l) 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 2px var(--l) no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / var(--l) 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 2px var(--l) no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / var(--l) 2px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 2px var(--l) no-repeat;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: .55; } }
+.dino-wrap.locking .reticle { inset: 4% 8% 2%; --c: #f2b230; animation: none; }
+.dino-wrap.caught .reticle, .dino-wrap.caught .tag { opacity: 0; }
+.tag {
+  position: absolute; left: 50%; bottom: 100%; transform: translate(-50%, -14px); z-index: 3; white-space: nowrap; pointer-events: none;
+  display: flex; align-items: center; gap: 7px; padding: 6px 11px 6px 9px; border-radius: 999px;
+  background: rgba(14, 20, 16, .62); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  font: 600 12px var(--body); transition: opacity .3s;
+}
+.tag .rar { font: 600 9.5px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 2px 6px; border-radius: 6px; background: #f2b230; color: #1d1503; }
+.tag .dist { font: 500 11px var(--mono); opacity: .75; }
+
+.flash { position: absolute; inset: 0; background: #fff; z-index: 25; opacity: 0; pointer-events: none; }
+.scan { position: absolute; left: 0; right: 0; top: 0; height: 34%; z-index: 7; pointer-events: none; opacity: 0;
+  background: linear-gradient(to bottom, transparent, rgba(242, 178, 48, .22)); border-bottom: 2px solid rgba(242, 178, 48, .85); }
+.scan.run { animation: scan 1.7s cubic-bezier(.45,0,.55,1) infinite; }
+@keyframes scan { 0% { transform: translateY(-100%); opacity: 1; } 100% { transform: translateY(300%); opacity: 1; } }
+
+.hud-top { position: absolute; top: 50px; left: 14px; right: 14px; z-index: 20; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.chip { background: rgba(12, 18, 14, .55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 14px; padding: 8px 11px; }
+.env-chip .l1 { font: 600 11px var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+.env-chip .l2 { display: flex; align-items: center; gap: 6px; font-size: 11px; opacity: .85; margin-top: 2px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #f2b230; flex: none; }
+.dot.blink { animation: pulse .8s steps(2) infinite; }
+.dot.ok { background: #5fd27f; }
+.count-chip { text-align: right; font-size: 11px; line-height: 1.2; }
+.count-chip b { display: block; font: 800 20px/1 var(--display); }
+
+.toast {
+  position: absolute; left: 50%; top: 118px; transform: translateX(-50%); z-index: 22; max-width: 84%; width: max-content;
+  background: rgba(255,255,255,.94); color: #17221a; border-radius: 14px; padding: 9px 14px; text-align: center;
+  font: 600 13px/1.3 var(--body); box-shadow: 0 8px 24px rgba(0,0,0,.25); animation: drop .35s cubic-bezier(.2,.9,.3,1.2);
+}
+.toast small { display: block; font-weight: 500; color: #5b6a5e; font-size: 11.5px; margin-top: 1px; }
+@keyframes drop { from { opacity: 0; transform: translate(-50%, -10px); } }
+
+.hud-bottom {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; padding: 40px 22px 26px;
+  display: grid; grid-template-columns: 52px 1fr 52px; align-items: center; gap: 10px;
+  background: linear-gradient(to top, rgba(0,0,0,.55), transparent);
+}
+.round { width: 52px; height: 52px; border-radius: 50%; border: 2px solid rgba(255,255,255,.85); background: rgba(12,18,14,.45); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: grid; place-items: center; padding: 0; overflow: hidden; }
+.round svg { width: 86%; }
+.round .ico { width: 22px; height: 22px; }
+.collect {
+  justify-self: center; height: 62px; min-width: 150px; padding: 0 26px; border: 0; border-radius: 999px;
+  background: #f2b230; color: #1d1503; font: 800 19px var(--display); letter-spacing: -.01em;
+  box-shadow: 0 0 0 5px rgba(242, 178, 48, .32), 0 10px 20px rgba(0,0,0,.3); transition: transform .15s, opacity .3s, box-shadow .3s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.collect:active { transform: scale(.96); }
+.collect[disabled] { opacity: .55; cursor: default; box-shadow: 0 0 0 5px rgba(255,255,255,.15); }
+.collect.ready { animation: ring 1.6s ease-out infinite; }
+@keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(242,178,48,.6), 0 10px 20px rgba(0,0,0,.3); } 100% { box-shadow: 0 0 0 16px rgba(242,178,48,0), 0 10px 20px rgba(0,0,0,.3); } }
+
+/* Permission */
+.perm { z-index: 40; display: grid; place-items: center; background: rgba(5, 10, 6, .35); backdrop-filter: blur(16px) saturate(.8); -webkit-backdrop-filter: blur(16px) saturate(.8); }
+.perm-inner { width: 80%; display: grid; gap: 18px; justify-items: center; }
+.app-mark { text-align: center; }
+.app-mark .logo { width: 64px; height: 64px; margin: 0 auto 10px; border-radius: 16px; background: #f2b230; display: grid; place-items: center; box-shadow: 0 10px 24px rgba(0,0,0,.3); }
+.app-mark .logo svg { width: 54px; }
+.app-mark b { font: 800 22px var(--display); display: block; }
+.app-mark span { font-size: 12.5px; opacity: .85; }
+.dialog { width: 100%; background: rgba(244, 245, 243, .95); color: #111; border-radius: 16px; text-align: center; overflow: hidden; }
+.dialog .body { padding: 16px 16px 14px; }
+.dialog h3 { margin: 0 0 4px; font: 700 14.5px/1.3 var(--body); }
+.dialog p { margin: 0; font-size: 12.5px; line-height: 1.35; color: #333; }
+.dialog .btns { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid rgba(0,0,0,.15); }
+.dialog .btns button { background: none; border: 0; padding: 11px; font-size: 15px; color: #1a6fe0; }
+.dialog .btns button + button { border-left: 1px solid rgba(0,0,0,.15); font-weight: 700; }
+
+/* Album */
+.album {
+  z-index: 30; background: #edf1ea; color: #17221a; display: flex; flex-direction: column;
+  transform: translateY(102%); transition: transform .5s cubic-bezier(.2,.8,.2,1);
+}
+.album.open { transform: none; }
+.album-head { padding: 52px 16px 10px; display: grid; gap: 10px; }
+.album-top { display: flex; justify-content: space-between; align-items: center; }
+.back { background: none; border: 0; padding: 4px 0; font-weight: 600; font-size: 14px; color: #2b5a37; display: inline-flex; align-items: center; gap: 2px; }
+.album-title { font: 800 26px/1 var(--display); letter-spacing: -.02em; margin: 0; }
+.progress { display: grid; gap: 5px; }
+.progress .row { display: flex; justify-content: space-between; font: 500 11px var(--mono); color: #5b6a5e; }
+.progress .track { height: 6px; border-radius: 3px; background: #d6ddd2; overflow: hidden; }
+.progress .fill { height: 100%; background: #2b5a37; border-radius: 3px; transition: width .6s cubic-bezier(.3,1,.4,1); }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; background: #dde3d9; border-radius: 10px; padding: 3px; }
+.tabs button { border: 0; background: none; border-radius: 8px; padding: 6px; font-weight: 600; font-size: 13px; color: #4a5a4d; }
+.tabs button[aria-selected="true"] { background: #fff; color: #17221a; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.album-body { flex: 1; overflow-y: auto; padding: 4px 14px 24px; scrollbar-width: none; }
+.album-body::-webkit-scrollbar { display: none; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.tile { position: relative; background: #fff; border-radius: 14px; padding: 8px 6px 9px; text-align: center; box-shadow: 0 1px 0 rgba(20,40,25,.08); }
+.tile .stk { aspect-ratio: 4 / 3; display: grid; place-items: center; }
+.tile .stk svg { width: 100%; overflow: visible; }
+.tile .nm { font: 700 11.5px/1.2 var(--display); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .meta { font: 500 8.5px/1.3 var(--mono); color: #6b786d; text-transform: uppercase; letter-spacing: .03em; margin-top: 2px; }
+.tile .cnt { position: absolute; top: 6px; right: 6px; font: 700 10px var(--mono); background: #2b5a37; color: #fff; border-radius: 7px; padding: 1px 5px; }
+.tile.locked { background: transparent; border: 1.5px dashed #b9c4b4; box-shadow: none; }
+.tile.locked .stk svg { filter: brightness(0); opacity: .13; }
+.tile.locked .nm { color: #8d998f; }
+.tile .q { font: 800 30px var(--display); color: #c3ccbf; }
+.tile .new { position: absolute; top: -7px; left: -5px; z-index: 2; background: #f2b230; color: #1d1503; font: 700 9.5px var(--mono); letter-spacing: .06em; padding: 3px 6px; border-radius: 6px; transform: rotate(-8deg); box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+.tile.stamp { animation: stamp .55s cubic-bezier(.3,1.5,.5,1); }
+@keyframes stamp { 0% { transform: scale(1.18) rotate(-4deg); } 100% { transform: none; } }
+.tile.hl { box-shadow: 0 0 0 2px #f2b230, 0 6px 16px rgba(242,178,48,.35); }
+.sec-label { font: 600 10.5px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #5b6a5e; margin: 14px 2px 8px; }
+
+.board { display: grid; gap: 6px; }
+.lb-row { display: grid; grid-template-columns: 18px 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: #fff; border-radius: 12px; padding: 9px 12px 9px 10px; }
+.lb-row.me { box-shadow: 0 0 0 2px #2b5a37; }
+.lb-row .rk { font: 700 12px var(--mono); color: #6b786d; text-align: center; }
+.av { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 12px var(--body); color: #fff; }
+.lb-row .who b { display: block; font: 700 13.5px/1.2 var(--display); }
+.lb-row .who small { font-size: 11px; color: #6b786d; }
+.lb-row .bar { height: 4px; border-radius: 2px; background: #e3e8df; margin-top: 4px; overflow: hidden; }
+.lb-row .bar i { display: block; height: 100%; background: #f2b230; border-radius: 2px; transition: width .6s; }
+.lb-row .pts { font: 800 18px var(--display); text-align: right; line-height: 1; }
+.lb-row .pts small { display: block; font: 500 9px var(--mono); color: #6b786d; text-transform: uppercase; }
+.invite { width: 100%; margin-top: 10px; border: 1.5px dashed #9fb09f; background: none; border-radius: 12px; padding: 11px; font-weight: 600; font-size: 13px; color: #2b5a37; }
+
+.flyer { position: absolute; z-index: 45; pointer-events: none; transform-origin: 0 0; }
+.flyer svg { width: 100%; height: 100%; overflow: visible; }
+
+@media (prefers-reduced-motion: reduce) {
+  .world, .dino svg, .reticle, .collect.ready, .scan.run { animation: none !important; }
+}
+
+/* ---------- Scale test: real-scale placement (geometry comes from placeDino via inline vars) ---------- */
+.dino-wrap.real .reticle { inset: var(--ri); }
+.dino-wrap.real.locking .reticle { inset: var(--ril); }
+.dino-wrap.real .tag { left: var(--tag-x); top: var(--tag-y); bottom: auto; transform: translateX(-50%); }
+.dino-wrap.real .ground-shadow { left: var(--sh-x); top: var(--sh-y); width: var(--sh-w); height: var(--sh-h); right: auto; bottom: auto; transform: translate(-50%, -50%); opacity: var(--sh-o, 1); }
+.dino-wrap.real.caught .ground-shadow { opacity: 0; }
+.screen.freeze .world, .screen.freeze .dino svg { animation: none !important; }
+#dbg { z-index: 5; pointer-events: none; }
+.hz {
+  position: absolute; right: 7%; z-index: 6; transform: translateY(-50%); touch-action: none; cursor: ns-resize;
+  background: #f2b230; color: #1d1503; font: 600 10px var(--mono); padding: 3px 7px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,.25);
+}
+
+/* ---------- Debug panel ---------- */
+.dbg { grid-area: dbg; background: var(--surface); border: 1.5px dashed var(--amber); border-radius: 16px; padding: 18px 20px; display: grid; gap: 14px; font-size: 13px; min-width: 0; }
+.dbg-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.dbg-head h2 { margin: 0; }
+.dbg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px 22px; }
+.sl { display: grid; grid-template-columns: 96px minmax(0, 1fr) 60px; gap: 8px; align-items: center; font: 500 11px var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.sl input { width: 100%; accent-color: var(--fern); }
+.sl output { text-align: right; color: var(--ink); text-transform: none; }
+.dbg-sub { font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; border-top: 1px dashed var(--line); padding-top: 12px; }
+.dbg-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chk { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.chk input { accent-color: var(--fern); }
+.readout { font: 500 12px/1.7 var(--mono); background: var(--bg); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 18px; }
+.readout span { color: var(--muted); }
+.log-wrap { overflow-x: auto; }
+.log { width: 100%; border-collapse: collapse; font: 500 11.5px var(--mono); }
+.log th, .log td { text-align: left; padding: 4px 8px 4px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.log th { color: var(--muted); font-weight: 500; }
+.log .sum td { font-weight: 600; background: var(--bg); }
+.log-empty { color: var(--muted); margin: 0; font-size: 13px; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="sticker" x="-15%" y="-15%" width="130%" height="135%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="6" result="grow"/>
+      <feGaussianBlur in="grow" stdDeviation="3.5" result="blur"/>
+      <feOffset in="blur" dy="5" result="off"/>
+      <feFlood flood-color="#13241a" flood-opacity=".3"/>
+      <feComposite in2="off" operator="in" result="shadow"/>
+      <feFlood flood-color="#ffffff"/>
+      <feComposite in2="grow" operator="in" result="outline"/>
+      <feMerge><feMergeNode in="shadow"/><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+</svg>
+
+<main class="wrap">
+  <header class="head">
+    <p class="eyebrow">Game concept · interactive mock-up</p>
+    <h1>Dino <em>Catch</em></h1>
+    <p class="lede">Point your phone at the world outside. The game reads the season and the landscape, places a dinosaur in the camera view, and you tap to catch it. Each catch turns into a sticker in your personal album.</p>
+    <p class="lede">Try it on the phone: tap the dinosaur or press <b>Collect</b>. Click any step below to jump to it.</p>
+  </header>
+
+  <section class="steps-box" aria-labelledby="steps-h">
+    <h2 id="steps-h">How a round plays</h2>
+    <ol class="steps" id="steps">
+      <li><button data-step="1"><span class="n">1</span><span><b>Camera access</b><small>The game opens the phone camera. Play happens in augmented reality.</small></span></button></li>
+      <li><button data-step="2"><span class="n">2</span><span><b>Read the environment</b><small>Season and landscape decide which dinosaurs can appear.</small></span></button></li>
+      <li><button data-step="3"><span class="n">3</span><span><b>Place the dinosaur</b><small>A dino is anchored into the live camera view.</small></span></button></li>
+      <li><button data-step="4"><span class="n">4</span><span><b>Tap to catch</b><small>Tap the dino or press Collect. It turns into a sticker.</small></span></button></li>
+      <li><button data-step="5"><span class="n">5</span><span><b>Collection of dino items</b><small>The catch lands in the album next to earlier finds.</small></span></button></li>
+      <li><button data-step="6"><span class="n">6</span><span><b>A personal collection that grows</b><small>Built over time from what you spot and tap on your screen.</small></span></button></li>
+      <li><button data-step="7"><span class="n">7</span><span><b>Friends and leaderboards</b><small>Add friends and rank by the items collected.</small></span></button></li>
+    </ol>
+  </section>
+
+  <section class="env" aria-labelledby="env-h">
+    <h2 id="env-h">Environment the phone detects</h2>
+    <p>In the real game this comes from the date, location and camera. Change it here to see a different dinosaur spawn.</p>
+    <div class="field"><span>Season</span><div class="seg" role="radiogroup" aria-label="Season" id="seasonSeg"></div></div>
+    <div class="field"><span>Landscape</span><div class="seg" role="radiogroup" aria-label="Landscape" id="landSeg"></div></div>
+    <div class="spawn-line">
+      <div>Spawns here: <strong id="spawnName">Tyrannosaurus</strong></div>
+      <span class="dbg-row"><button class="ghost" id="dbgBtn" aria-pressed="false">Debug</button><button class="ghost" id="resetBtn">Restart demo</button></span>
+    </div>
+  </section>
+
+  <section class="dbg" id="dbgPanel" aria-label="Debug" hidden></section>
+
+  <section class="device" aria-label="Phone mock-up">
+    <div class="phone">
+      <div class="screen" id="screen">
+        <div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span class="sb-icons"><span class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i></span><span class="batt"><i></i></span></span></div>
+
+        <section class="scr" id="cam">
+          <div class="world">
+            <canvas id="scene"></canvas>
+            <button class="dino-wrap" id="dinoWrap" hidden aria-label="Catch the dinosaur">
+              <span class="ground-shadow"></span>
+              <span class="reticle"></span>
+              <span class="tag" id="dinoTag"></span>
+              <span class="dino" id="dino"></span>
+            </button>
+            <canvas id="dbg" hidden></canvas>
+            <div class="hz" id="hz" hidden></div>
+          </div>
+          <canvas id="fx"></canvas>
+          <div class="vignette"></div>
+          <div class="scan" id="scan"></div>
+          <div class="hud-top">
+            <div class="chip env-chip"><div class="l1" id="envL1">Forest · Autumn</div><div class="l2"><span class="dot blink" id="envDot"></span><span id="envL2">Reading surroundings…</span></div></div>
+            <div class="chip count-chip"><b id="countNum">6</b>stickers</div>
+          </div>
+          <div class="toast" id="toast" hidden></div>
+          <div class="flash" id="flash"></div>
+          <div class="hud-bottom">
+            <button class="round" id="albumBtn" aria-label="Open collection"></button>
+            <button class="collect" id="collectBtn" disabled>Collect</button>
+            <button class="round" id="rescanBtn" aria-label="Scan again">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="3.2"/></svg>
+            </button>
+          </div>
+        </section>
+
+        <section class="scr perm" id="perm">
+          <div class="perm-inner">
+            <div class="app-mark"><div class="logo" id="logo"></div><b>Dino Catch</b><span>Dinosaurs are hiding outside.</span></div>
+            <div class="dialog" role="dialog" aria-labelledby="perm-h">
+              <div class="body"><h3 id="perm-h">“Dino Catch” would like to access the camera</h3><p>The camera is used to place dinosaurs in the world around you.</p></div>
+              <div class="btns"><button id="denyBtn">Don’t Allow</button><button id="allowBtn">Allow</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="scr album" id="album" aria-label="Collection">
+          <div class="album-head">
+            <div class="album-top">
+              <button class="back" id="backBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Camera</button>
+              <span style="font:500 11px var(--mono);color:#5b6a5e">SEASON 1</span>
+            </div>
+            <h3 class="album-title">My Collection</h3>
+            <div class="progress"><div class="row"><span id="progSpecies">3 of 9 species</span><span id="progItems">6 stickers</span></div><div class="track"><div class="fill" id="progFill"></div></div></div>
+            <div class="tabs" role="tablist"><button role="tab" id="tabStk" aria-selected="true">Stickers</button><button role="tab" id="tabFr" aria-selected="false">Friends</button></div>
+          </div>
+          <div class="album-body" id="albumBody"></div>
+        </section>
+      </div>
+    </div>
+    <div class="device-cap" id="cap">Allow camera access to start</div>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wait = ms => new Promise(r => setTimeout(r, RM ? Math.min(ms, 120) : ms));
+
+const SEASONS = { spring: 'Spring', summer: 'Summer', autumn: 'Autumn', winter: 'Winter' };
+const LANDS = { forest: 'Forest', meadow: 'Meadow', coast: 'Coast' };
+const HORIZON = { forest: .71, meadow: .62, coast: .5 }; // eye-level line as a fraction of scene height, matches the drawn scenes
+const SPAWN = {
+  forest: { spring: 'stego', summer: 'trex', autumn: 'trex', winter: 'stego' },
+  meadow: { spring: 'trice', summer: 'trice', autumn: 'brachio', winter: 'trice' },
+  coast:  { spring: 'ptera', summer: 'brachio', autumn: 'ptera', winter: 'ptera' },
+};
+const SPECIES = {
+  trex:    { name: 'Tyrannosaurus', rarity: 'Legendary', c: '#7d6b3a', b: '#cdb47c', d: '#4a3f22', a: '#a6402c', dist: 14, kind: 'walk', h: 4, len: 12 },
+  trice:   { name: 'Triceratops',   rarity: 'Rare',      c: '#4f7a72', b: '#a9c4b4', d: '#2f4c46', a: '#d9824b', dist: 11, kind: 'walk', h: 3, len: 9 },
+  stego:   { name: 'Stegosaurus',   rarity: 'Uncommon',  c: '#6b8a3b', b: '#bfd08a', d: '#3f5621', a: '#e0a030', dist: 9,  kind: 'walk', h: 4, len: 9 },
+  brachio: { name: 'Brachiosaurus', rarity: 'Rare',      c: '#6a7fa0', b: '#b5c3d6', d: '#3f4f69', a: '#8597b4', dist: 30, kind: 'tall', h: 12, len: 22 },
+  ptera:   { name: 'Pteranodon',    rarity: 'Common',    c: '#b45a3c', b: '#e8c27a', d: '#6e3020', a: '#8f4430', dist: 18, kind: 'fly', span: 6, alt: 5 },
+}; // real-world metres: h = art height (head/plates to feet), span = wingspan (fit to art width), alt = flight altitude
+const SLOTS = ['trex', 'trice', 'stego', 'brachio', 'ptera', null, null, null, null];
+const FRIENDS = [
+  { n: 'Maya K.', i: 'MK', items: 14, sp: 5, col: '#c25424' },
+  { n: 'Jonas R.', i: 'JR', items: 11, sp: 4, col: '#2a7aa0' },
+  { n: 'Priya S.', i: 'PS', items: 6, sp: 3, col: '#7a4fa8' },
+  { n: 'Leo M.', i: 'LM', items: 3, sp: 2, col: '#4f7a2e' },
+];
+const START_CAUGHT = () => ({
+  trice: { count: 3, land: 'meadow', season: 'spring' },
+  stego: { count: 1, land: 'forest', season: 'summer' },
+  ptera: { count: 2, land: 'coast', season: 'summer' },
+});
+
+const state = { season: 'autumn', land: 'forest', phase: 'perm', spawn: null, caught: START_CAUGHT(), last: 'ptera', newId: null, tab: 'stk', albumOpen: false };
+
+/* ---------- Dinosaur art (flat shapes, facing left, viewBox 200x150) ---------- */
+function art(id) {
+  const s = SPECIES[id], c = s.c, b = s.b, d = s.d, a = s.a, iv = '#f1e6cc';
+  const eye = (x, y, r = 3.6) => `<circle fill="${d}" cx="${x}" cy="${y}" r="${r}"/><circle fill="#fff" cx="${x + 1}" cy="${y - 1}" r="${r * .35}"/>`;
+  switch (id) {
+    case 'trex': return `
+      <path fill="${d}" d="M130 94 L134 124 L128 136 L118 141 L142 141 L143 130 L145 96 Z"/>
+      <path fill="${c}" d="M118 62 C150 58 178 50 198 36 C188 60 160 82 124 94 Z"/>
+      <ellipse fill="${c}" cx="108" cy="76" rx="36" ry="24" transform="rotate(-12 108 76)"/>
+      <path fill="${c}" d="M88 58 C80 48 74 40 64 38 L66 72 C76 74 84 78 94 82 Z"/>
+      <path fill="${c}" d="M60 26 C74 24 86 32 88 46 C88 56 82 62 70 62 L58 60 Z"/>
+      <path fill="${c}" d="M66 28 C54 22 34 22 22 28 C15 31 13 37 15 42 L44 46 L68 50 Z"/>
+      <path fill="${c}" d="M68 52 L44 53 C34 55 24 58 19 62 C24 67 40 67 56 65 L72 60 Z"/>
+      <path fill="${a}" d="M20 44 L66 50 L66 53 L22 59 C30 54 30 50 20 44 Z"/>
+      <path fill="#fff" d="M20 42l3 5 3-5zM28 43l3 5 3-5zM36 44l3 5 3-5zM44 45l3 4 3-4zM26 61l3-4 3 4zM34 61l3-4 3 4zM42 60l3-4 3 4z"/>
+      <path fill="${b}" d="M76 70 C86 92 104 100 128 96 C112 106 88 102 74 84 Z"/>
+      <path fill="${c}" d="M84 82 C80 90 76 94 70 95 C72 99 80 99 88 90 Z"/>
+      <ellipse fill="${c}" cx="114" cy="92" rx="20" ry="16"/>
+      <path fill="${c}" d="M110 100 L102 126 L94 135 L84 138 L86 142 L112 142 L114 134 L126 102 Z"/>
+      <path fill="none" stroke="${d}" stroke-width="3" stroke-linecap="round" opacity=".5" d="M100 58 l6 10 M114 56 l5 11 M128 58 l4 10 M142 60 l3 9 M156 58 l2 8"/>
+      <path fill="${d}" d="M50 30 Q58 25 67 29 L65 32 Q58 29 52 32 Z"/>${eye(58, 36)}`;
+    case 'trice': return `
+      <path fill="${d}" d="M150 100 L150 140 L166 140 L166 100 Z"/>
+      <path fill="${d}" d="M96 102 L96 140 L112 140 L112 102 Z"/>
+      <path fill="${c}" d="M150 80 C172 82 188 90 198 102 C180 102 162 98 148 96 Z"/>
+      <ellipse fill="${c}" cx="118" cy="86" rx="44" ry="30"/>
+      <path fill="${b}" d="M84 98 C100 114 136 116 156 104 C140 120 100 120 84 106 Z"/>
+      <path fill="${c}" d="M136 100 L134 140 L152 140 L156 100 Z"/>
+      <path fill="${c}" d="M82 98 L80 140 L98 140 L102 98 Z"/>
+      <ellipse fill="${a}" cx="84" cy="64" rx="19" ry="31" transform="rotate(22 84 64)"/>
+      <g fill="${d}" opacity=".35"><circle cx="86" cy="46" r="3.5"/><circle cx="96" cy="60" r="3.5"/><circle cx="76" cy="44" r="3"/><circle cx="98" cy="76" r="3"/></g>
+      <path fill="${c}" d="M80 64 C64 62 42 70 30 82 L22 90 C32 96 46 98 62 96 C74 94 84 86 86 76 Z"/>
+      <path fill="${d}" d="M31 82 L14 90 L27 98 Z"/>
+      <path fill="${iv}" d="M58 72 L24 50 L64 76 Z M70 68 L46 40 L75 71 Z M35 82 L29 67 L43 80 Z"/>${eye(60, 81)}`;
+    case 'stego': return `
+      <path fill="${a}" d="M66 74 L74 50 L86 68 Z M84 64 L96 34 L108 60 Z M104 58 L118 26 L130 58 Z M126 60 L140 32 L150 64 Z M146 68 L158 46 L166 76 Z M164 78 L174 60 L178 84 Z"/>
+      <path fill="${d}" d="M80 100 L80 138 L94 138 L94 100 Z M146 98 L148 138 L164 138 L162 98 Z"/>
+      <path fill="${iv}" d="M186 92 L199 74 L192 95 Z M177 94 L184 73 L186 97 Z"/>
+      <path fill="${c}" d="M48 94 C58 64 110 50 150 66 C170 74 182 84 198 96 C178 100 160 102 146 106 L60 106 Z"/>
+      <path fill="${b}" d="M60 100 C90 112 130 112 150 102 L146 109 L62 109 Z"/>
+      <path fill="${c}" d="M58 90 C46 86 32 88 22 94 C20 99 24 103 30 103 L60 104 Z"/>
+      <path fill="${c}" d="M64 100 L62 140 L80 140 L82 100 Z M128 96 L126 140 L146 140 L150 96 Z"/>
+      <g fill="${d}" opacity=".3"><circle cx="100" cy="80" r="4"/><circle cx="120" cy="74" r="3.5"/><circle cx="138" cy="84" r="4"/><circle cx="84" cy="88" r="3"/></g>${eye(34, 95, 3)}`;
+    case 'brachio': return `
+      <path fill="${d}" d="M102 104 L102 142 L116 142 L116 104 Z M148 104 L150 142 L164 142 L162 104 Z"/>
+      <path fill="${c}" d="M156 90 C176 94 190 104 198 118 C182 116 166 110 154 106 Z"/>
+      <ellipse fill="${c}" cx="120" cy="96" rx="44" ry="26"/>
+      <path fill="${c}" d="M84 90 C70 72 58 42 52 18 L70 14 C74 38 88 64 108 80 Z"/>
+      <path fill="${c}" d="M50 8 C42 6 30 10 26 17 C28 22 40 24 54 24 L72 22 L72 12 C66 6 58 6 50 8 Z"/>
+      <path fill="${b}" d="M84 104 C104 120 140 122 160 106 C146 124 104 126 84 112 Z"/>
+      <path fill="${b}" d="M60 24 C64 46 74 66 88 84 L82 86 C68 68 58 46 55 24 Z" opacity=".8"/>
+      <g fill="${d}" opacity=".3"><circle cx="112" cy="82" r="4"/><circle cx="130" cy="88" r="3.5"/><circle cx="146" cy="84" r="3"/><circle cx="98" cy="90" r="3"/></g>
+      <path fill="${c}" d="M86 102 L84 142 L102 142 L104 102 Z M134 106 L134 142 L152 142 L152 104 Z"/>${eye(45, 14, 2.8)}`;
+    case 'ptera': return `
+      <path fill="${a}" d="M98 70 L6 46 C26 62 46 80 70 86 L98 88 Z"/>
+      <path fill="${a}" d="M110 70 L196 42 C178 60 158 80 134 86 L110 88 Z"/>
+      <path fill="none" stroke="${d}" stroke-width="2.5" stroke-linecap="round" opacity=".55" d="M96 72 L20 52 M112 72 L182 50 M96 78 L50 72 M112 78 L156 72"/>
+      <ellipse fill="${c}" cx="104" cy="82" rx="12" ry="20"/>
+      <path fill="${c}" d="M100 58 L138 40 L109 67 Z"/>
+      <circle fill="${c}" cx="102" cy="64" r="9.5"/>
+      <path fill="${b}" d="M96 61 L52 71 L98 73 Z"/>
+      <path fill="none" stroke="${d}" stroke-width="3" stroke-linecap="round" d="M99 100 L95 112 M109 100 L113 112"/>${eye(100, 62, 2.6)}`;
+  }
+}
+const dinoSVG = (id, sticker) => `<svg viewBox="-12 -12 224 176" aria-hidden="true"><g${sticker ? ' filter="url(#sticker)"' : ''}>${art(id)}</g></svg>`;
+
+/* ---------- Camera scene (procedural canvas) ---------- */
+const PAL = {
+  spring: { skyTop: '#bcdcf0', skyBot: '#eef4e2', leaf: ['#a7d672', '#c4e48f', '#f4bccb'], ground: '#86b552', groundDark: '#4f7a2e', trunk: '#5a4636', hillFar: '#a9c9a0', hillMid: '#7fae5c', grass: ['#7bb04a', '#9ccc5e', '#5f9a38'], sea: ['#7cb8cf', '#4f93ad'], sand: '#e4d5b0', flowers: ['#ffffff', '#f6c1d0', '#ffd84d'] },
+  summer: { skyTop: '#8cc8ec', skyBot: '#e8f3dc', leaf: ['#3e7a30', '#5b9a3b', '#2c6127'], ground: '#5d8c34', groundDark: '#355a1d', trunk: '#4d3b2c', hillFar: '#8fb59a', hillMid: '#5e8f3c', grass: ['#5c9234', '#79ad44', '#447a26'], sea: ['#4fa6c9', '#2a7aa0'], sand: '#e6d3a1', flowers: ['#ffffff', '#ffcf3d', '#e8584a'] },
+  autumn: { skyTop: '#e9d9b6', skyBot: '#f6ecd6', leaf: ['#d9822b', '#c25424', '#e7ae48'], ground: '#93743a', groundDark: '#5c4421', trunk: '#4a382a', hillFar: '#c4ae8a', hillMid: '#a5843f', grass: ['#b08b3e', '#c9a24f', '#8a6a2c'], sea: ['#7b9fae', '#4f7887'], sand: '#d9c59a', flowers: ['#e7ae48', '#c25424', '#f1d9a0'] },
+  winter: { skyTop: '#c7d2de', skyBot: '#eef2f6', leaf: ['#e7edf3', '#cfd8e2', '#b9c4d0'], ground: '#e6ebf0', groundDark: '#b8c3ce', trunk: '#3f342d', hillFar: '#d3dbe4', hillMid: '#e9eef3', grass: ['#c9d2db', '#aab6c2', '#dfe5eb'], sea: ['#8ea3b3', '#647d90'], sand: '#d5d6d0', flowers: [] },
+};
+function rng(seed) { let s = seed % 2147483647 || 1; return () => (s = s * 16807 % 2147483647) / 2147483647; }
+function alpha(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${n >> 8 & 255},${n & 255},${a})`; }
+
+function drawScene() {
+  const cv = $('#scene'), r = cv.getBoundingClientRect();
+  if (!r.width) return;
+  const dpr = Math.min(devicePixelRatio || 1, 2), w = r.width, h = r.height;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const p = PAL[state.season], R = rng(state.land.length * 131 + state.season.length * 17 + 7);
+  const sky = x.createLinearGradient(0, 0, 0, h * .7); sky.addColorStop(0, p.skyTop); sky.addColorStop(1, p.skyBot);
+  x.fillStyle = sky; x.fillRect(0, 0, w, h);
+  ({ forest, meadow, coast })[state.land](x, w, h, p, R);
+  for (let i = 0; i < 16; i++) { // lens bokeh
+    const bx = R() * w, by = R() * h * .55, br = 8 + R() * 26;
+    const g = x.createRadialGradient(bx, by, 0, bx, by, br);
+    g.addColorStop(0, 'rgba(255,252,235,.28)'); g.addColorStop(1, 'rgba(255,252,235,0)');
+    x.fillStyle = g; x.beginPath(); x.arc(bx, by, br, 0, 7); x.fill();
+  }
+}
+function glow(x, cx, cy, r, col) { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,250,230,0)'); x.fillStyle = g; x.fillRect(0, 0, x.canvas.width, x.canvas.height); }
+function blobs(x, n, w, y0, y1, cols, a, rMin, rMax, R) { for (let i = 0; i < n; i++) { x.fillStyle = alpha(cols[i % cols.length], a); x.beginPath(); x.arc(R() * w, y0 + R() * (y1 - y0), rMin + R() * (rMax - rMin), 0, 7); x.fill(); } }
+
+function forest(x, w, h, p, R) {
+  glow(x, w * .5, h * .1, h * .6, 'rgba(255,250,228,.95)');
+  blobs(x, 50, w, -20, h * .3, p.leaf, .35, 18, 50, R);
+  const layer = (n, tw0, tw1, a, base, edge) => {
+    for (let i = 0; i < n; i++) {
+      let bx = R() * w; if (edge) bx = R() < .5 ? R() * w * .22 : w - R() * w * .22;
+      const tw = tw0 + R() * (tw1 - tw0), tx = bx + (w / 2 - bx) * .35;
+      x.fillStyle = alpha(p.trunk, a);
+      x.beginPath(); x.moveTo(bx - tw / 2, base); x.lineTo(bx + tw / 2, base); x.lineTo(tx + tw * .22, -10); x.lineTo(tx - tw * .22, -10); x.closePath(); x.fill();
+      x.fillStyle = `rgba(255,240,210,${a * .18})`;
+      x.beginPath(); x.moveTo(bx - tw / 2, base); x.lineTo(bx - tw / 2 + tw * .25, base); x.lineTo(tx - tw * .16, -10); x.lineTo(tx - tw * .22, -10); x.closePath(); x.fill();
+    }
+  };
+  layer(16, 3, 9, .35, h * .74);
+  const gr = x.createLinearGradient(0, h * .7, 0, h); gr.addColorStop(0, p.ground); gr.addColorStop(1, p.groundDark);
+  x.fillStyle = gr; x.fillRect(0, h * .71, w, h);
+  x.fillStyle = alpha(state.season === 'winter' ? '#ffffff' : '#e8d7a8', .35);
+  x.beginPath(); x.moveTo(w * .47, h * .71); x.lineTo(w * .53, h * .71); x.lineTo(w * .78, h); x.lineTo(w * .22, h); x.fill();
+  layer(9, 7, 16, .7, h * .8);
+  x.fillStyle = 'rgba(255,248,220,.10)';
+  for (let i = 0; i < 4; i++) { const sx = w * (.35 + R() * .3); x.beginPath(); x.moveTo(sx, 0); x.lineTo(sx + 14, 0); x.lineTo(sx + 60 + R() * 80, h); x.lineTo(sx - 20 + R() * 40, h); x.fill(); }
+  blobs(x, 30, w, h * .7, h * .8, [p.groundDark, p.leaf[2], p.ground], .7, 8, 22, R);
+  layer(4, 22, 44, 1, h + 5, true);
+  blobs(x, 36, w, -30, h * .16, p.leaf, .8, 14, 40, R);
+}
+function meadow(x, w, h, p, R) {
+  glow(x, w * .78, h * .16, h * .5, 'rgba(255,250,228,.9)');
+  x.fillStyle = 'rgba(255,255,255,.75)';
+  for (let i = 0; i < 4; i++) { const cx = R() * w, cy = h * (.08 + R() * .22); for (let j = 0; j < 4; j++) { x.beginPath(); x.ellipse(cx + j * 14 - 20, cy + (j % 2) * 4, 20, 10, 0, 0, 7); x.fill(); } }
+  const hill = (y, amp, col, f) => { x.fillStyle = col; x.beginPath(); x.moveTo(0, h); for (let i = 0; i <= w; i += 6) x.lineTo(i, y + Math.sin(i * f + R() * .2) * amp); x.lineTo(w, h); x.fill(); };
+  hill(h * .52, 10, p.hillFar, .02);
+  hill(h * .58, 8, p.hillMid, .03);
+  blobs(x, 40, w, h * .56, h * .59, [p.leaf[2], p.leaf[0]], .9, 5, 11, R);
+  const gr = x.createLinearGradient(0, h * .6, 0, h); gr.addColorStop(0, p.ground); gr.addColorStop(1, p.groundDark);
+  x.fillStyle = gr; x.fillRect(0, h * .62, w, h);
+  x.lineCap = 'round';
+  for (let i = 0; i < 500; i++) {
+    const gy = h * .62 + Math.pow(R(), .7) * h * .4, t = (gy - h * .62) / (h * .4), gx = R() * w, len = 3 + t * 18;
+    x.strokeStyle = p.grass[i % 3]; x.lineWidth = .6 + t * 1.6;
+    x.beginPath(); x.moveTo(gx, gy); x.quadraticCurveTo(gx + 2, gy - len * .6, gx + (R() - .5) * 8, gy - len); x.stroke();
+  }
+  for (let i = 0; i < 70 && p.flowers.length; i++) {
+    const gy = h * .64 + R() * h * .36, t = (gy - h * .62) / (h * .4);
+    x.fillStyle = p.flowers[i % p.flowers.length]; x.beginPath(); x.arc(R() * w, gy, .8 + t * 2.4, 0, 7); x.fill();
+  }
+}
+function coast(x, w, h, p, R) {
+  glow(x, w * .3, h * .3, h * .5, 'rgba(255,248,225,.9)');
+  const sea = x.createLinearGradient(0, h * .5, 0, h * .68); sea.addColorStop(0, p.sea[0]); sea.addColorStop(1, p.sea[1]);
+  x.fillStyle = sea; x.fillRect(0, h * .5, w, h * .2);
+  x.strokeStyle = 'rgba(255,255,255,.45)'; x.lineWidth = 1.2;
+  for (let i = 0; i < 26; i++) { const wy = h * .52 + R() * h * .15, wx = R() * w, ww = 8 + R() * 22; x.beginPath(); x.moveTo(wx, wy); x.lineTo(wx + ww, wy); x.stroke(); }
+  x.fillStyle = 'rgba(255,248,225,.35)'; x.fillRect(w * .18, h * .5, w * .24, h * .18);
+  x.fillStyle = p.trunk; x.beginPath(); x.moveTo(w, h * .3); x.lineTo(w * .78, h * .36); x.lineTo(w * .7, h * .52); x.lineTo(w * .62, h * .7); x.lineTo(w, h * .75); x.fill();
+  x.fillStyle = alpha(p.leaf[2], .9); x.beginPath(); x.moveTo(w, h * .3); x.lineTo(w * .78, h * .36); x.lineTo(w * .76, h * .4); x.lineTo(w, h * .35); x.fill();
+  const sand = x.createLinearGradient(0, h * .66, 0, h); sand.addColorStop(0, p.sand); sand.addColorStop(1, alpha(p.trunk, .55));
+  x.fillStyle = sand; x.beginPath(); x.moveTo(0, h * .68); for (let i = 0; i <= w; i += 8) x.lineTo(i, h * .675 + Math.sin(i * .05) * 3); x.lineTo(w, h); x.lineTo(0, h); x.fill();
+  x.strokeStyle = 'rgba(255,255,255,.75)'; x.lineWidth = 2; x.beginPath(); for (let i = 0; i <= w; i += 8) x.lineTo(i, h * .675 + Math.sin(i * .05) * 3); x.stroke();
+  blobs(x, 10, w, h * .78, h * .98, [p.trunk], .55, 4, 12, R);
+}
+
+/* ---------- Weather particles ---------- */
+const fx = { parts: [], ctx: null };
+function initFx() {
+  const cv = $('#fx'), r = cv.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
+  cv.width = r.width * dpr; cv.height = r.height * dpr; fx.ctx = cv.getContext('2d'); fx.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); fx.w = r.width; fx.h = r.height;
+  const n = RM ? 0 : { spring: 22, summer: 16, autumn: 24, winter: 60 }[state.season];
+  fx.parts = Array.from({ length: n }, () => newPart(true));
+}
+function newPart(anywhere) {
+  return { x: Math.random() * fx.w, y: anywhere ? Math.random() * fx.h : -10, s: 2 + Math.random() * 4, vy: .3 + Math.random() * .7, vx: (Math.random() - .5) * .6, r: Math.random() * 6, vr: (Math.random() - .5) * .06, ph: Math.random() * 6 };
+}
+function tick(t) {
+  const x = fx.ctx;
+  if (x) {
+    x.clearRect(0, 0, fx.w, fx.h);
+    const s = state.season, cols = { spring: ['#f8c9d6', '#ffffff'], summer: ['#fff7c2', '#ffffff'], autumn: ['#d9822b', '#c25424', '#e7ae48'], winter: ['#ffffff'] }[s];
+    fx.parts.forEach((p, i) => {
+      p.y += p.vy * (s === 'summer' ? .3 : 1); p.x += p.vx + Math.sin(t / 900 + p.ph) * .35; p.r += p.vr;
+      if (p.y > fx.h + 10) fx.parts[i] = newPart(false);
+      x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillStyle = cols[i % cols.length];
+      if (s === 'winter') { x.globalAlpha = .85; x.beginPath(); x.arc(0, 0, p.s * .45, 0, 7); x.fill(); }
+      else if (s === 'summer') { x.globalAlpha = .4 + .4 * Math.sin(t / 400 + p.ph); x.beginPath(); x.arc(0, 0, p.s * .35, 0, 7); x.fill(); }
+      else { x.globalAlpha = .9; x.beginPath(); x.ellipse(0, 0, p.s * (s === 'autumn' ? 1.1 : .8), p.s * .45, 0, 0, 7); x.fill(); }
+      x.restore();
+    });
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- UI helpers ---------- */
+function setStep(n) {
+  document.querySelectorAll('#steps button').forEach(b => b.classList.toggle('on', +b.dataset.step === n));
+  $('#cap').textContent = ['', 'Allow camera access to start', 'The phone reads season and landscape', 'Tap the dinosaur or press Collect', 'Caught. Turning it into a sticker…', 'Your new sticker joins the album', 'The album grows with every catch', 'Friends ranked by items collected'][n];
+}
+let toastTimer;
+function toast(html, ms = 2600) {
+  const t = $('#toast'); t.innerHTML = html; t.hidden = false;
+  t.style.animation = 'none'; void t.offsetWidth; t.style.animation = '';
+  clearTimeout(toastTimer); if (ms) toastTimer = setTimeout(() => (t.hidden = true), ms);
+}
+const total = () => Object.values(state.caught).reduce((s, c) => s + c.count, 0);
+function updateHud() {
+  $('#countNum').textContent = total();
+  $('#albumBtn').innerHTML = state.last ? dinoSVG(state.last, true) : '';
+  $('#envL1').textContent = `${LANDS[state.land]} · ${SEASONS[state.season]}`;
+  $('#spawnName').textContent = SPECIES[SPAWN[state.land][state.season]].name;
+}
+function renderSegs() {
+  const mk = (el, obj, key) => {
+    el.innerHTML = Object.entries(obj).map(([k, v]) => `<button role="radio" aria-checked="${state[key] === k}" data-v="${k}">${v}</button>`).join('');
+    el.onclick = e => { const b = e.target.closest('button'); if (!b || state[key] === b.dataset.v) return; state[key] = b.dataset.v; renderSegs(); envChanged(); };
+  };
+  mk($('#seasonSeg'), SEASONS, 'season'); mk($('#landSeg'), LANDS, 'land');
+}
+function envChanged() {
+  drawScene(); initFx(); updateHud(); renderDbg();
+  if (state.phase === 'perm') return;
+  if (!state.albumOpen) startScan();
+  else if (state.phase === 'spawned') { state.phase = 'idle'; $('#dinoWrap').hidden = true; }
+}
+
+/* ---------- Flow ---------- */
+let scanToken = 0;
+async function startScan() {
+  const t = ++scanToken;
+  state.phase = 'scanning'; state.spawn = null;
+  const wrap = $('#dinoWrap'); wrap.hidden = true; wrap.className = 'dino-wrap';
+  $('#collectBtn').disabled = true; $('#collectBtn').classList.remove('ready');
+  $('#scan').classList.add('run'); $('#envDot').className = 'dot blink'; $('#envL2').textContent = 'Reading surroundings…';
+  $('#toast').hidden = true;
+  setStep(2); placeDino();
+  await wait(1900); if (t !== scanToken) return;
+  $('#scan').classList.remove('run'); $('#envDot').className = 'dot ok'; $('#envL2').textContent = 'Spawn zone found';
+  await wait(350); if (t !== scanToken) return;
+  spawn();
+}
+function spawn() {
+  const id = SPAWN[state.land][state.season], s = SPECIES[id];
+  state.spawn = id; state.phase = 'spawned';
+  const wrap = $('#dinoWrap'), dino = $('#dino');
+  wrap.dataset.kind = s.kind; wrap.className = 'dino-wrap'; wrap.hidden = false;
+  dino.className = 'dino'; dino.innerHTML = dinoSVG(id, false);
+  void dino.offsetWidth; dino.classList.add('appear');
+  $('#dinoTag').innerHTML = `<span class="rar">${s.rarity}</span>${s.name}<span class="dist">${cfg.sp[id].dist} m</span>`;
+  $('#collectBtn').disabled = false; $('#collectBtn').classList.add('ready');
+  toast(`A wild ${s.name} appeared!<small>Tap it or press Collect</small>`, 3200);
+  setStep(3);
+  placeDino(); renderDbg();
+  state.spawnAt = performance.now(); state.missed = 0;
+}
+async function catchDino(via = 'step') {
+  if (state.phase !== 'spawned') return;
+  logCatch(via);
+  state.phase = 'catching'; scanToken++;
+  const id = state.spawn, wrap = $('#dinoWrap'), dino = $('#dino');
+  $('#collectBtn').disabled = true; $('#collectBtn').classList.remove('ready');
+  $('#toast').hidden = true; setStep(4);
+  wrap.classList.add('locking');
+  await wait(480);
+  $('#flash').animate([{ opacity: .9 }, { opacity: 0 }], { duration: RM ? 1 : 420, easing: 'ease-out' });
+  wrap.classList.add('caught');
+  dino.classList.remove('appear');
+  dino.querySelector('g').setAttribute('filter', 'url(#sticker)');
+  dino.classList.add('as-sticker');
+  const first = !state.caught[id];
+  toast(first ? `Caught! New species<small>${SPECIES[id].name} is now a sticker</small>` : `Caught another ${SPECIES[id].name}<small>+1 sticker</small>`, 0);
+  await wait(1100);
+  if (state.caught[id]) state.caught[id].count++;
+  else state.caught[id] = { count: 1, land: state.land, season: state.season };
+  state.last = id; state.newId = id; state.phase = 'caught';
+  updateHud();
+  await openAlbum(id);
+}
+async function openAlbum(flyId, tab = 'stk') {
+  state.albumOpen = true; state.tab = tab;
+  renderAlbum(flyId);
+  $('#album').classList.add('open'); $('#screen').classList.add('light-status');
+  $('#toast').hidden = true;
+  setStep(tab === 'fr' ? 7 : 5);
+  await wait(520);
+  if (flyId) await fly(flyId);
+  if (tab === 'stk') setTimeout(() => { if (state.albumOpen && state.tab === 'stk') setStep(6); }, 1600);
+}
+async function fly(id) {
+  const scr = $('#screen').getBoundingClientRect(), srcEl = $('#dino svg');
+  const tile = document.querySelector(`.tile[data-id="${id}"]`); if (!tile || !srcEl) return;
+  const stk = tile.querySelector('.stk'); tile.scrollIntoView({ block: 'nearest' });
+  const src = srcEl.getBoundingClientRect(), dst = stk.querySelector('svg').getBoundingClientRect();
+  $('#dinoWrap').hidden = true;
+  stk.style.visibility = 'hidden';
+  const f = document.createElement('div'); f.className = 'flyer'; f.innerHTML = dinoSVG(id, true);
+  Object.assign(f.style, { left: src.left - scr.left + 'px', top: src.top - scr.top + 'px', width: src.width + 'px', height: src.height + 'px' });
+  $('#screen').appendChild(f);
+  const dx = dst.left - src.left, dy = dst.top - src.top, sc = dst.width / src.width;
+  await f.animate([
+    { transform: 'translate(0,0) scale(1) rotate(-7deg)' },
+    { transform: `translate(${dx * .45}px, ${dy * .4 - 60}px) scale(${(1 + sc) / 2}) rotate(8deg)`, offset: .5 },
+    { transform: `translate(${dx}px, ${dy}px) scale(${sc}) rotate(-4deg)` },
+  ], { duration: RM ? 1 : 800, easing: 'cubic-bezier(.45,0,.3,1)', fill: 'forwards' }).finished;
+  f.remove(); stk.style.visibility = '';
+  tile.classList.add('stamp', 'hl');
+}
+function closeAlbum() {
+  state.albumOpen = false; state.newId = null;
+  $('#album').classList.remove('open'); $('#screen').classList.remove('light-status');
+  if (state.phase === 'spawned') setStep(3); else startScan();
+}
+
+function renderAlbum(flyId) {
+  const caught = state.caught, n = Object.keys(caught).length;
+  $('#progSpecies').textContent = `${n} of ${SLOTS.length} species`;
+  $('#progItems').textContent = `${total()} stickers`;
+  $('#progFill').style.width = (n / SLOTS.length * 100) + '%';
+  $('#tabStk').setAttribute('aria-selected', state.tab === 'stk');
+  $('#tabFr').setAttribute('aria-selected', state.tab === 'fr');
+  const body = $('#albumBody');
+  if (state.tab === 'stk') {
+    const tilt = [-5, 4, -3, 6, -4];
+    body.innerHTML = `<div class="sec-label">Season 1 · Mesozoic set</div><div class="grid">${SLOTS.map((id, i) => {
+      if (!id) return `<div class="tile locked"><div class="stk"><span class="q">?</span></div><div class="nm">???</div><div class="meta">Not spotted yet</div></div>`;
+      const c = caught[id];
+      if (!c) return `<div class="tile locked" data-id="${id}"><div class="stk">${dinoSVG(id, false)}</div><div class="nm">${SPECIES[id].name}</div><div class="meta">Not spotted yet</div></div>`;
+      return `<div class="tile${id === state.newId && !flyId ? ' hl' : ''}" data-id="${id}">${id === state.newId && c.count === 1 ? '<span class="new">NEW</span>' : ''}${c.count > 1 ? `<span class="cnt">×${c.count}</span>` : ''}<div class="stk" style="transform:rotate(${tilt[i]}deg)">${dinoSVG(id, true)}</div><div class="nm">${SPECIES[id].name}</div><div class="meta">${LANDS[c.land]} · ${SEASONS[c.season]}</div></div>`;
+    }).join('')}</div>`;
+  } else {
+    const rows = [...FRIENDS, { n: 'You', i: 'ME', items: total(), sp: n, col: '#2b5a37', me: true }].sort((a, b) => b.items - a.items || (b.me ? 1 : -1));
+    const max = rows[0].items;
+    body.innerHTML = `<div class="sec-label">This week · items collected</div><div class="board">${rows.map((r, i) => `
+      <div class="lb-row${r.me ? ' me' : ''}"><span class="rk">${i + 1}</span><span class="av" style="background:${r.col}">${r.i}</span>
+      <div class="who"><b>${r.n}</b><small>${r.sp} species</small><div class="bar"><i style="width:${r.items / max * 100}%"></i></div></div>
+      <div class="pts">${r.items}<small>items</small></div></div>`).join('')}</div>
+      <button class="invite" id="inviteBtn">+ Add a friend</button>`;
+    $('#inviteBtn').onclick = () => { $('#inviteBtn').textContent = 'Invites are not live in this mock-up'; };
+  }
+}
+
+async function goStep(n) {
+  if (n === 1) { reset(false); return; }
+  if (state.phase === 'perm') allow();
+  if (n === 2) { if (state.albumOpen) closeAlbum(); startScan(); return; }
+  if (n === 3 || n === 4) {
+    if (state.albumOpen) { state.albumOpen = false; state.newId = null; $('#album').classList.remove('open'); $('#screen').classList.remove('light-status'); }
+    if (state.phase !== 'spawned') { scanToken++; $('#scan').classList.remove('run'); $('#envDot').className = 'dot ok'; $('#envL2').textContent = 'Spawn zone found'; spawn(); }
+    if (n === 4) { await wait(700); catchDino(); }
+    return;
+  }
+  if (n === 5 || n === 6) { if (state.albumOpen) { state.tab = 'stk'; renderAlbum(); setStep(n); } else openAlbum(null, 'stk'); return; }
+  if (n === 7) { if (state.albumOpen) { state.tab = 'fr'; renderAlbum(); setStep(7); } else openAlbum(null, 'fr'); }
+}
+function allow() { $('#perm').hidden = true; state.phase = 'idle'; startScan(); }
+function reset(full = true) {
+  scanToken++;
+  if (full) { state.caught = START_CAUGHT(); state.last = 'ptera'; }
+  state.phase = 'perm'; state.spawn = null; state.newId = null; state.albumOpen = false;
+  $('#album').classList.remove('open'); $('#screen').classList.remove('light-status');
+  $('#dinoWrap').hidden = true; $('#scan').classList.remove('run'); $('#toast').hidden = true;
+  $('#collectBtn').disabled = true; $('#collectBtn').classList.remove('ready');
+  $('#envDot').className = 'dot blink'; $('#envL2').textContent = 'Waiting for camera';
+  $('#perm').hidden = false; updateHud(); setStep(1); placeDino();
+}
+
+/* ---------- Scale test: real-scale model ---------- */
+const CFG_KEY = 'dinoScale.cfg', LOG_KEY = 'dinoScale.log';
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const cfgDefaults = () => ({
+  mode: 'item', fov: 65, camH: 1.5, mult: 1, overlays: true, freeze: false, horizon: { ...HORIZON },
+  sp: Object.fromEntries(Object.entries(SPECIES).map(([id, s]) => [id, { size: s.span || s.h, dist: s.dist, alt: s.alt || 0, x: 0 }])),
+});
+function loadCfg() {
+  const d = cfgDefaults(), s = store.get(CFG_KEY);
+  if (!s) return d;
+  return { ...d, ...s, horizon: { ...d.horizon, ...s.horizon }, sp: Object.fromEntries(Object.keys(d.sp).map(id => [id, { ...d.sp[id], ...(s.sp || {})[id] }])) };
+}
+const cfg = loadCfg();
+const dbg = { open: false, metrics: null, log: store.get(LOG_KEY) || [] };
+const bboxes = {}; // drawn art bounds per species, in viewBox units
+
+function artBox(id) {
+  if (!bboxes[id]) {
+    const tmp = document.createElement('div');
+    tmp.style.cssText = 'position:absolute;visibility:hidden;width:224px;left:-9999px';
+    tmp.innerHTML = dinoSVG(id, false); document.body.appendChild(tmp);
+    const b = tmp.querySelector('g').getBBox(); bboxes[id] = { x: b.x, y: b.y, width: b.width, height: b.height };
+    tmp.remove();
+  }
+  return bboxes[id];
+}
+const focal = () => $('#cam').offsetHeight / 2 / Math.tan(cfg.fov * Math.PI / 360); // pinhole focal length in px
+
+// Item mode keeps the stylesheet layout; real mode projects the dino through a pinhole camera onto the scene's ground plane.
+function placeDino() {
+  const wrap = $('#dinoWrap'), id = state.spawn;
+  if (!id || wrap.hidden) { dbg.metrics = null; drawDbg(); renderReadout(); return; }
+  const s = SPECIES[id], c = cfg.sp[id], bb = artBox(id), real = cfg.mode === 'real', world = $('.world');
+  const sw = $('#cam').offsetWidth, sh = $('#cam').offsetHeight, W = world.offsetWidth, H = world.offsetHeight;
+  const vis = { l: -world.offsetLeft, t: -world.offsetTop }; vis.r = vis.l + sw; vis.b = vis.t + sh; // the screen, in world px
+  const f = focal(), ppm = f / c.dist; // px per metre at the dino's distance
+  const horizonY = cfg.horizon[state.land] * H, groundY = horizonY + cfg.camH * ppm;
+  const footY = s.kind === 'fly' ? horizonY - (c.alt - cfg.camH) * ppm : groundY;
+  wrap.style.cssText = ''; wrap.classList.toggle('real', real);
+  let u, L, T; // px per art unit, wrap left/top in world px
+  if (real) {
+    u = c.size * ppm * cfg.mult / (s.span ? bb.width : bb.height);
+    L = W / 2 + c.x * ppm - (bb.x + bb.width / 2 + 12) * u;
+    T = footY - (bb.y + bb.height + 12) * u;
+    Object.assign(wrap.style, { left: L + 'px', top: T + 'px', width: 224 * u + 'px', marginLeft: '0', bottom: 'auto' });
+  } else { u = wrap.offsetWidth / 224; L = wrap.offsetLeft; T = wrap.offsetTop; }
+  const wW = 224 * u, wH = 176 * u;
+  const art = { l: L + (bb.x + 12) * u, t: T + (bb.y + 12) * u, w: bb.width * u, h: bb.height * u };
+  const ix = Math.max(0, Math.min(art.l + art.w, vis.r) - Math.max(art.l, vis.l));
+  const iy = Math.max(0, Math.min(art.t + art.h, vis.b) - Math.max(art.t, vis.t));
+  const dl = $('#dinoTag .dist'); if (dl) dl.textContent = `${c.dist} m`;
+
+  if (real) { // keep reticle and tag on screen (clear of the HUD) even when the dino overflows the frame
+    const p = .06, box = {
+      l: Math.max(art.l - art.w * p, vis.l + 10), r: Math.min(art.l + art.w * (1 + p), vis.r - 10),
+      t: Math.max(art.t - art.h * p, vis.t + 100), b: Math.min(art.t + art.h * (1 + p), vis.b - 100),
+    };
+    box.r = Math.max(box.r, box.l + 40); box.b = Math.max(box.b, box.t + 40);
+    const k = Math.min(box.r - box.l, box.b - box.t) * .08;
+    const inset = d => [box.t - T + d, wW - (box.r - L) + d, wH - (box.b - T) + d, box.l - L + d].map(v => v.toFixed(1) + 'px').join(' ');
+    const tag = $('#dinoTag'), tw = tag.offsetWidth / 2 + 8, fly = s.kind === 'fly', shW = art.w * (fly ? .45 : .85);
+    Object.entries({
+      '--ri': inset(0), '--ril': inset(k),
+      '--tag-x': Math.min(Math.max((box.l + box.r) / 2, vis.l + tw), vis.r - tw) - L + 'px',
+      '--tag-y': Math.max(box.t - 14 - tag.offsetHeight, vis.t + 96) - T + 'px',
+      '--sh-x': art.l + art.w / 2 - L + 'px', '--sh-y': groundY - T + 'px', '--sh-w': shW + 'px', '--sh-h': shW * (fly ? .12 : .14) + 'px', '--sh-o': fly ? .45 : 1,
+    }).forEach(([k2, v]) => wrap.style.setProperty(k2, v));
+  }
+  dbg.metrics = {
+    id, real, f, ppm, horizonY, groundY, footY, art, vis, hit: { l: L, t: T, w: wW, h: wH },
+    onScreen: art.w * art.h ? ix * iy / (art.w * art.h) : 0,
+    trueDist: c.size * f / (s.span ? art.w : art.h), // distance at which the drawn size would be true to life
+  };
+  drawDbg(); renderReadout();
+}
+
+function logCatch(via) {
+  if (via === 'step') return; // jumps from the step list are not real player catches
+  const m = dbg.metrics, id = state.spawn;
+  dbg.log.push({ mode: cfg.mode, species: id, dist: cfg.sp[id].dist, timeToCatchMs: Math.round(performance.now() - state.spawnAt), missedTaps: state.missed, pctOnScreen: m ? Math.round(m.onScreen * 100) : 0, via, at: new Date().toISOString() });
+  store.set(LOG_KEY, dbg.log); renderLog();
+}
+
+/* ---------- Scale test: debug overlays ---------- */
+function drawDbg() {
+  const cv = $('#dbg'), hz = $('#hz'), on = dbg.open && cfg.overlays;
+  cv.hidden = hz.hidden = !on;
+  if (!on) return;
+  const world = $('.world'), W = world.offsetWidth, H = world.offsetHeight, dpr = Math.min(devicePixelRatio || 1, 2);
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H);
+  const hy = cfg.horizon[state.land] * H, m = dbg.metrics;
+  hz.style.top = hy + 'px'; hz.textContent = `horizon ${cfg.horizon[state.land].toFixed(3)}`;
+  x.lineWidth = 1.5; x.setLineDash([6, 4]); x.strokeStyle = '#f2b230';
+  x.beginPath(); x.moveTo(0, hy); x.lineTo(W, hy); x.stroke();
+  if (!m) return;
+  x.strokeStyle = '#4fd1ff'; x.strokeRect(m.hit.l, m.hit.t, m.hit.w, m.hit.h); // tap hit-box
+  x.setLineDash([]); x.strokeStyle = '#ff5a8a'; x.strokeRect(m.art.l, m.art.t, m.art.w, m.art.h); // drawn art bounds
+  if (!m.real) return;
+  const cx = m.art.l + m.art.w / 2;
+  x.strokeStyle = '#fff'; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(cx - 8, m.footY); x.lineTo(cx + 8, m.footY); x.moveTo(cx, m.footY - 8); x.lineTo(cx, m.footY + 8); x.stroke();
+  if (m.groundY !== m.footY) { x.setLineDash([3, 3]); x.beginPath(); x.moveTo(cx, m.footY); x.lineTo(cx, m.groundY); x.stroke(); x.setLineDash([]); }
+  // 1.8 m person standing at the same distance, always true scale
+  const ph = 1.8 * m.ppm, pw = ph * .28, r = ph * .07;
+  let px = m.art.l - pw - 10;
+  if (px < m.vis.l + 6) px = m.art.l + m.art.w + 10;
+  if (px + pw > m.vis.r - 6) px = m.vis.l + 12;
+  x.fillStyle = 'rgba(255,255,255,.9)'; x.strokeStyle = '#17221a'; x.lineWidth = 1;
+  x.beginPath(); x.arc(px + pw / 2, m.groundY - ph + r, r, 0, 7); x.fill(); x.stroke();
+  x.beginPath(); x.roundRect(px, m.groundY - ph + r * 2.2, pw, ph - r * 2.2, pw * .3); x.fill(); x.stroke();
+  x.font = '600 10px "IBM Plex Mono", monospace'; x.fillStyle = '#fff'; x.fillText('1.8 m', px, m.groundY - ph - 4);
+}
+
+/* ---------- Scale test: debug panel ---------- */
+const dbgId = () => state.spawn || SPAWN[state.land][state.season];
+const spc = (k, label, min, max, step) => ({ label, min, max, step, get: () => cfg.sp[dbgId()][k], set: v => (cfg.sp[dbgId()][k] = v), fmt: v => v + ' m' });
+const CTRL = {
+  fov:     { label: 'Camera FOV', min: 40, max: 90, step: 1, get: () => cfg.fov, set: v => (cfg.fov = v), fmt: v => v + '°' },
+  camH:    { label: 'Camera ht', min: 1, max: 2, step: .05, get: () => cfg.camH, set: v => (cfg.camH = v), fmt: v => v.toFixed(2) + ' m' },
+  horizon: { label: 'Horizon', min: .3, max: .85, step: .005, get: () => cfg.horizon[state.land], set: v => (cfg.horizon[state.land] = v), fmt: v => v.toFixed(3) },
+  mult:    { label: 'Scale ×', min: .25, max: 2, step: .05, get: () => cfg.mult, set: v => (cfg.mult = v), fmt: v => v.toFixed(2) + '×' },
+  size:    spc('size', () => (SPECIES[dbgId()].span ? 'Wingspan' : 'Height'), .5, 25, .5),
+  dist:    spc('dist', 'Distance', 2, 80, .5),
+  alt:     spc('alt', 'Altitude', 0, 40, .5),
+  x:       spc('x', 'X offset', -10, 10, .25),
+};
+function slider(k) {
+  const c = CTRL[k], v = c.get(), label = typeof c.label === 'function' ? c.label() : c.label;
+  return `<label class="sl"><span>${label}</span><input type="range" data-k="${k}" min="${c.min}" max="${c.max}" step="${c.step}" value="${v}"><output>${c.fmt(v)}</output></label>`;
+}
+function renderDbg() {
+  const p = $('#dbgPanel');
+  p.hidden = !dbg.open; $('#dbgBtn').setAttribute('aria-pressed', dbg.open);
+  if (dbg.open) {
+    const id = dbgId(), s = SPECIES[id];
+    p.innerHTML = `
+      <div class="dbg-head"><h2>Debug · scale test</h2><button class="ghost" data-act="close">Close (D)</button></div>
+      <div class="field"><span>Scale mode</span><div class="seg" role="radiogroup" aria-label="Scale mode">${[['item', 'Item'], ['real', 'Real scale']].map(([k, v]) => `<button role="radio" aria-checked="${cfg.mode === k}" data-mode="${k}">${v}</button>`).join('')}</div></div>
+      <div class="dbg-grid">${['fov', 'camH', 'horizon', 'mult'].map(slider).join('')}</div>
+      <p class="dbg-sub">${s.name} · ${LANDS[state.land]}${state.spawn ? '' : ' · next spawn'}</p>
+      <div class="dbg-grid">${['size', 'dist', ...(s.kind === 'fly' ? ['alt'] : []), 'x'].map(slider).join('')}</div>
+      <div class="dbg-row">
+        <button class="ghost" data-act="fit">Fit to frame</button><button class="ghost" data-act="true">Default distance</button>
+        <label class="chk"><input type="checkbox" data-c="overlays"${cfg.overlays ? ' checked' : ''}>Overlays</label>
+        <label class="chk"><input type="checkbox" data-c="freeze"${cfg.freeze ? ' checked' : ''}>Freeze motion</label>
+      </div>
+      <div class="readout" id="dbgRead"></div>
+      <p class="dbg-sub">Playtest log</p>
+      <div class="log-wrap" id="dbgLog"></div>
+      <div class="dbg-row"><button class="ghost" data-act="copylog">Copy log JSON</button><button class="ghost" data-act="clearlog">Clear log</button><button class="ghost" data-act="copycfg">Copy config</button><button class="ghost" data-act="reset">Reset to defaults</button></div>`;
+    renderReadout(); renderLog();
+  }
+  drawDbg();
+}
+function syncDbg() { // move sliders after an outside change, e.g. dragging the horizon handle
+  document.querySelectorAll('#dbgPanel [data-k]').forEach(i => { const c = CTRL[i.dataset.k]; i.value = c.get(); i.nextElementSibling.textContent = c.fmt(c.get()); });
+}
+function renderReadout() {
+  const el = $('#dbgRead'), m = dbg.metrics;
+  if (!el) return;
+  if (!m) { el.innerHTML = '<div><span>No dino on screen yet. Wait for a spawn.</span></div>'; return; }
+  const r = Math.round;
+  el.innerHTML = [
+    ['Mode', m.real ? 'Real scale' : 'Item'],
+    ['Focal length', r(m.f) + ' px'],
+    ['px per metre', m.real ? (m.ppm * cfg.mult).toFixed(1) : '—'],
+    ['On screen', `${r(m.art.w)} × ${r(m.art.h)} px`],
+    ['In frame', r(m.onScreen * 100) + '%'],
+    ['Hit-box', `${r(m.hit.w)} × ${r(m.hit.h)} px`],
+    ['Distance', cfg.sp[m.id].dist + ' m'],
+    ['True to life at', m.trueDist.toFixed(1) + ' m'],
+  ].map(([k, v]) => `<div><span>${k}</span> ${v}</div>`).join('');
+}
+function renderLog() {
+  const el = $('#dbgLog');
+  if (!el) return;
+  if (!dbg.log.length) { el.innerHTML = '<p class="log-empty">No catches yet. Each tap on the dino or Collect press adds a row.</p>'; return; }
+  const avg = (rows, k) => rows.reduce((s, row) => s + row[k], 0) / rows.length;
+  const sums = ['item', 'real'].map(mode => {
+    const rows = dbg.log.filter(row => row.mode === mode);
+    return rows.length ? `<tr class="sum"><td>${mode}</td><td>avg of ${rows.length}</td><td></td><td>${(avg(rows, 'timeToCatchMs') / 1000).toFixed(2)} s</td><td>${avg(rows, 'missedTaps').toFixed(1)}</td><td>${Math.round(avg(rows, 'pctOnScreen'))}%</td><td></td></tr>` : '';
+  }).join('');
+  const rows = dbg.log.slice(-10).reverse().map(row => `<tr><td>${row.mode}</td><td>${SPECIES[row.species].name}</td><td>${row.dist} m</td><td>${(row.timeToCatchMs / 1000).toFixed(2)} s</td><td>${row.missedTaps}</td><td>${row.pctOnScreen}%</td><td>${row.via}</td></tr>`).join('');
+  el.innerHTML = `<table class="log"><thead><tr><th>Mode</th><th>Species</th><th>Dist</th><th>Time</th><th>Misses</th><th>In frame</th><th>Via</th></tr></thead><tbody>${sums}${rows}</tbody></table>`;
+}
+function applyCfg() { store.set(CFG_KEY, cfg); $('#screen').classList.toggle('freeze', cfg.freeze); placeDino(); }
+function setDbg(open) { dbg.open = open; renderDbg(); }
+function copy(btn, text) {
+  const label = btn.textContent;
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+    .then(() => (btn.textContent = 'Copied'), () => { console.log(text); btn.textContent = 'Blocked: see console'; })
+    .finally(() => setTimeout(() => (btn.textContent = label), 1600));
+}
+$('#dbgPanel').addEventListener('input', e => {
+  const k = e.target.dataset.k, c = e.target.dataset.c;
+  if (k) { CTRL[k].set(+e.target.value); e.target.nextElementSibling.textContent = CTRL[k].fmt(+e.target.value); }
+  else if (c) cfg[c] = e.target.checked;
+  else return;
+  applyCfg();
+});
+$('#dbgPanel').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.mode) { cfg.mode = b.dataset.mode; applyCfg(); renderDbg(); return; }
+  const id = dbgId(), s = SPECIES[id], c = cfg.sp[id];
+  switch (b.dataset.act) {
+    case 'close': setDbg(false); return;
+    case 'fit': { // nearest distance where the art fits 90% of the screen width and 55% of its height
+      const bb = artBox(id), cam = $('#cam'), f = focal(), k = c.size * cfg.mult / (s.span ? bb.width : bb.height);
+      c.dist = Math.min(80, Math.ceil(Math.max(bb.width * k * f / (cam.offsetWidth * .9), bb.height * k * f / (cam.offsetHeight * .55)) * 2) / 2);
+      break;
+    }
+    case 'true': c.dist = s.dist; break;
+    case 'reset': Object.assign(cfg, cfgDefaults()); break;
+    case 'clearlog': dbg.log = []; store.set(LOG_KEY, dbg.log); renderLog(); return;
+    case 'copylog': copy(b, JSON.stringify(dbg.log, null, 2)); return;
+    case 'copycfg': copy(b, JSON.stringify(cfg, null, 2)); return;
+    default: return;
+  }
+  applyCfg(); renderDbg();
+});
+
+/* ---------- Wire up ---------- */
+$('#logo').innerHTML = dinoSVG('trex', false);
+$('#allowBtn').onclick = allow;
+$('#denyBtn').onclick = () => { $('#denyBtn').textContent = 'Camera is required'; };
+$('#dinoWrap').onclick = () => catchDino('tap');
+$('#collectBtn').onclick = () => catchDino('button');
+$('#albumBtn').onclick = () => openAlbum(null);
+$('#rescanBtn').onclick = () => { if (state.phase !== 'catching') startScan(); };
+$('#backBtn').onclick = closeAlbum;
+$('#tabStk').onclick = () => { state.tab = 'stk'; renderAlbum(); setStep(6); };
+$('#tabFr').onclick = () => { state.tab = 'fr'; renderAlbum(); setStep(7); };
+$('#resetBtn').onclick = () => reset(true);
+document.querySelectorAll('#steps button').forEach(b => b.onclick = () => goStep(+b.dataset.step));
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { drawScene(); initFx(); placeDino(); }, 150); });
+$('#dbgBtn').onclick = () => setDbg(!dbg.open);
+addEventListener('keydown', e => {
+  if (e.key.toLowerCase() !== 'd' || e.metaKey || e.ctrlKey || e.altKey || e.target.closest('input, textarea')) return;
+  setDbg(!dbg.open);
+});
+$('#cam').addEventListener('pointerdown', e => { // a tap that misses the dino while it is catchable
+  if (state.phase === 'spawned' && !e.target.closest('#dinoWrap, button, .hz')) state.missed++;
+});
+$('#hz').onpointerdown = e => {
+  const el = e.currentTarget; e.preventDefault(); el.setPointerCapture(e.pointerId);
+  el.onpointermove = ev => {
+    const r = $('.world').getBoundingClientRect();
+    cfg.horizon[state.land] = Math.round(Math.min(.85, Math.max(.3, (ev.clientY - r.top) / r.height)) * 1000) / 1000;
+    applyCfg(); syncDbg();
+  };
+  el.onpointerup = () => (el.onpointermove = null);
+};
+
+renderSegs(); updateHud(); drawScene(); initFx(); requestAnimationFrame(tick); setStep(1);
+$('#screen').classList.toggle('freeze', cfg.freeze);
+setDbg(new URLSearchParams(location.search).get('debug') === '1');
+$('#envL2').textContent = 'Waiting for camera';
+</script>
+
+</body>
+</html>
